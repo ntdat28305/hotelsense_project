@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+
+/* Override Tailwind base for dark theme pages */
+button { font-family: inherit; }
+select option { background: #1e1b4b; color: #fff; }
