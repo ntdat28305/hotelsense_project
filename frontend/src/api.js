@@ -62,3 +62,50 @@ export async function getDistricts(city) {
 export async function getStats() {
   return request("/stats");
 }
+
+// ── Auth header helper ───────────────────────────────────────────────
+function authHeaders() {
+  const token = localStorage.getItem("hs_token");
+  return token ? { "Content-Type": "application/json", "Authorization": `Bearer ${token}` } : { "Content-Type": "application/json" };
+}
+
+async function authRequest(path, options = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: authHeaders(),
+    ...options,
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  return res.json();
+}
+
+// ── History ──────────────────────────────────────────────────────────
+export async function saveHistory(meta) {
+  return authRequest("/user/history", { method: "POST", body: JSON.stringify(meta) });
+}
+
+export async function getHistory() {
+  return authRequest("/user/history");
+}
+
+// ── Bookmarks ────────────────────────────────────────────────────────
+export async function addBookmark(hotel) {
+  return authRequest("/user/bookmarks", { method: "POST", body: JSON.stringify({
+    hotel_id:    hotel.id || 0,
+    hotel_name:  hotel.name || "",
+    hotel_url:   hotel.url || "",
+    city:        hotel.city || "",
+    match_score: hotel.match_score || 0,
+  })});
+}
+
+export async function removeBookmark(hotelId) {
+  return authRequest(`/user/bookmarks/${hotelId}`, { method: "DELETE" });
+}
+
+export async function getBookmarks() {
+  return authRequest("/user/bookmarks");
+}
+
+export async function checkBookmark(hotelId) {
+  return authRequest(`/user/bookmarks/${hotelId}/check`);
+}

@@ -17,6 +17,7 @@ python-multipart
 huggingface_hub
 PyJWT
 httpx
+boto3
 tensorflow
 accelerate
 sentencepiece

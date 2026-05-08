@@ -88,15 +88,17 @@ const bgOverlay = { position: "fixed", inset: 0, zIndex: 1, background: "linear-
 const pageStyle = { minHeight: "100vh", background: "#0f0c29", fontFamily: "'Segoe UI', system-ui, sans-serif", position: "relative" };
 
 
-function AuthButton({ auth }) {
+function AuthButton({ auth, onProfile }) {
   if (auth.loading) return null;
   if (auth.user) {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         {auth.user.avatar && (
-          <img src={auth.user.avatar} style={{ width: 30, height: 30, borderRadius: "50%", border: "2px solid rgba(167,139,250,0.5)" }} alt="avatar" />
+          <img src={auth.user.avatar} onClick={onProfile} style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid rgba(167,139,250,0.5)", cursor: "pointer" }} alt="avatar" />
         )}
-        <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>{auth.user.name?.split(" ").pop()}</span>
+        <button onClick={onProfile} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 99, padding: "5px 14px", color: "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer" }}>
+          Trang cá nhân
+        </button>
         <button onClick={auth.logout} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 99, padding: "5px 14px", color: "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer" }}>
           Đăng xuất
         </button>
@@ -111,7 +113,7 @@ function AuthButton({ auth }) {
   );
 }
 
-export default function Results({ results, meta, onSelect, onBack, auth = {} }) {
+export default function Results({ results, meta, onSelect, onBack, auth = {}, onProfile }) {
   const rawResults   = results?.results || [];
   const isMultiModel = rawResults.some(r => r.multi_model);
   const hotels       = isMultiModel ? [] : (results?.hotels || rawResults);
@@ -132,7 +134,7 @@ export default function Results({ results, meta, onSelect, onBack, auth = {} }) 
         <div onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 16 }}>
           <img src="/logo.png" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} alt="logo" /> HotelSense
         </div>
-        <AuthButton auth={auth} />
+        <AuthButton auth={auth} onProfile={onProfile} />
       </nav>
 
       {/* Filter bar */}

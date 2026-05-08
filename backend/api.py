@@ -31,8 +31,10 @@ from database import (
     init_db, get_hotel_by_id, search_hotels,
     get_reviews_by_hotel, get_all_cities,
     get_districts_by_city, get_db_stats,
+    add_search_history, get_search_history,
+    add_bookmark, remove_bookmark, get_bookmarks, is_bookmarked,
 )
-from auth import router as auth_router
+from auth import router as auth_router, require_user
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -292,6 +294,60 @@ async def db_stats():
     """Thống kê database."""
     stats = get_db_stats()
     return {"status": "success", "stats": stats}
+
+
+# ── History & Bookmark endpoints ─────────────────────────────────────
+
+class BookmarkInput(BaseModel):
+    hotel_id:    int
+    hotel_name:  str  = ""
+    hotel_url:   str  = ""
+    city:        str  = ""
+    match_score: float = 0
+
+
+@app.post("/user/history")
+async def save_history(meta: dict, user: dict = Depends(require_user)):
+    """Lưu lịch sử tìm kiếm."""
+    try:
+        add_search_history(int(user["sub"]), meta)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/user/history")
+async def user_history(user: dict = Depends(require_user)):
+    """Lấy lịch sử tìm kiếm."""
+    history = get_search_history(int(user["sub"]))
+    return {"status": "success", "history": history}
+
+
+@app.post("/user/bookmarks")
+async def add_hotel_bookmark(data: BookmarkInput, user: dict = Depends(require_user)):
+    """Thêm bookmark KS."""
+    add_bookmark(int(user["sub"]), data.dict())
+    return {"status": "success"}
+
+
+@app.delete("/user/bookmarks/{hotel_id}")
+async def remove_hotel_bookmark(hotel_id: int, user: dict = Depends(require_user)):
+    """Xóa bookmark KS."""
+    remove_bookmark(int(user["sub"]), hotel_id)
+    return {"status": "success"}
+
+
+@app.get("/user/bookmarks")
+async def user_bookmarks(user: dict = Depends(require_user)):
+    """Lấy danh sách bookmark."""
+    bookmarks = get_bookmarks(int(user["sub"]))
+    return {"status": "success", "bookmarks": bookmarks}
+
+
+@app.get("/user/bookmarks/{hotel_id}/check")
+async def check_bookmark(hotel_id: int, user: dict = Depends(require_user)):
+    """Kiểm tra KS đã bookmark chưa."""
+    return {"bookmarked": is_bookmarked(int(user["sub"]), hotel_id)}
 
 
 @app.get("/health")

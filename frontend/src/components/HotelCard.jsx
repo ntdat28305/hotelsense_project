@@ -1,4 +1,25 @@
-export function HotelCard({ hotel, isTop, onClick }) {
+import { useState } from "react";
+import { addBookmark, removeBookmark } from "../api";
+
+export function HotelCard({ hotel, isTop, onClick, user }) {
+  const [bookmarked, setBookmarked] = useState(false);
+  const [bmLoading,  setBmLoading]  = useState(false);
+
+  async function toggleBookmark(e) {
+    e.stopPropagation();
+    if (!user) return;
+    setBmLoading(true);
+    try {
+      if (bookmarked) {
+        await removeBookmark(hotel.id);
+        setBookmarked(false);
+      } else {
+        await addBookmark(hotel);
+        setBookmarked(true);
+      }
+    } catch {}
+    finally { setBmLoading(false); }
+  }
   const scores = hotel.scores || hotel;
   const aspects = [
     { label: "Phòng",    pct: Math.round(scores.room_positive_pct     || 0) },
@@ -61,6 +82,11 @@ export function HotelCard({ hotel, isTop, onClick }) {
           💬 {hotel.total_analyzed || scores.total_analyzed || hotel.total || 0} reviews phân tích
         </span>
         <span style={{ color: "#a78bfa", fontSize: 12, fontWeight: 600 }}>Xem chi tiết →</span>
+        {user && (
+          <button onClick={toggleBookmark} disabled={bmLoading} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, opacity: bmLoading ? 0.5 : 1 }}>
+            {bookmarked ? "🔖" : "🏷️"}
+          </button>
+        )}
       </div>
     </div>
   );

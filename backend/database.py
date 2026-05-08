@@ -13,6 +13,45 @@ from typing import Optional
 
 DB_PATH = os.environ.get("DB_PATH", "../data/hotels.db")
 
+# ── Download DB từ Railway Bucket khi startup ────────────────────────
+
+def download_db_from_bucket():
+    """Tải hotels.db từ Railway S3 Bucket nếu chưa có local."""
+    import os, boto3
+    from botocore.exceptions import ClientError
+
+    endpoint   = os.environ.get("S3_ENDPOINT",   "https://t3.storageapi.dev")
+    access_key = os.environ.get("S3_ACCESS_KEY",  "")
+    secret_key = os.environ.get("S3_SECRET_KEY",  "")
+    bucket     = os.environ.get("S3_BUCKET",      "")
+    db_path    = os.environ.get("DB_PATH",         "/app/data/hotels.db")
+
+    if not all([access_key, secret_key, bucket]):
+        print("[S3] Credentials not set, skipping download")
+        return
+
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+    if os.path.exists(db_path) and os.path.getsize(db_path) > 1000:
+        print(f"[S3] DB already exists at {db_path}, skipping download")
+        return
+
+    try:
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=endpoint,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name="auto",
+        )
+        print(f"[S3] Downloading hotels.db from bucket {bucket}...")
+        s3.download_file(bucket, "hotels.db", db_path)
+        print(f"[S3] Downloaded to {db_path} ({os.path.getsize(db_path)} bytes)")
+    except ClientError as e:
+        print(f"[S3] Download failed: {e}")
+
+
+
 CATEGORIES = [
     "Room_Facilities",
     "Service_Staff",
@@ -155,7 +194,6 @@ def search_hotels(
         JOIN absa_scores s ON s.hotel_id = h.id
         WHERE h.city = ?
           AND h.analyzed = 1
-          AND s.total_analyzed >= 10
           AND s.overall_score >= ?
     """
     params = [city, min_score]
@@ -308,6 +346,124 @@ def get_db_stats(db_path: str = DB_PATH) -> dict:
             "reviews_total":   reviews_total,
             "by_city":         {r["city"]: r["cnt"] for r in cities},
         }
+
+
+# ── History & Bookmark ───────────────────────────────────────────────
+
+def ensure_user_tables(db_path: str = DB_PATH):
+    """Tạo bảng search_history và bookmarks nếu chưa có."""
+    with get_conn(db_path) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS search_history (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL,
+                mode       TEXT,
+                city       TEXT,
+                district   TEXT,
+                aspects    TEXT,
+                models     TEXT,
+                urls       TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS bookmarks (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL,
+                hotel_id   INTEGER,
+                hotel_name TEXT,
+                hotel_url  TEXT,
+                city       TEXT,
+                match_score REAL DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now')),
+                UNIQUE(user_id, hotel_id)
+            )
+        """)
+        conn.commit()
+
+
+def add_search_history(user_id: int, meta: dict, db_path: str = DB_PATH):
+    import json
+    ensure_user_tables(db_path)
+    with get_conn(db_path) as conn:
+        conn.execute("""
+            INSERT INTO search_history (user_id, mode, city, district, aspects, models, urls)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            meta.get("mode", ""),
+            meta.get("city", ""),
+            meta.get("district", ""),
+            json.dumps(meta.get("aspects", []), ensure_ascii=False),
+            json.dumps(meta.get("models", []), ensure_ascii=False),
+            json.dumps(meta.get("urls", []), ensure_ascii=False),
+        ))
+        conn.commit()
+
+
+def get_search_history(user_id: int, limit: int = 20, db_path: str = DB_PATH) -> list:
+    import json
+    ensure_user_tables(db_path)
+    with get_conn(db_path) as conn:
+        rows = conn.execute("""
+            SELECT * FROM search_history WHERE user_id = ?
+            ORDER BY created_at DESC LIMIT ?
+        """, (user_id, limit)).fetchall()
+        result = []
+        for r in rows:
+            item = dict(r)
+            for key in ["aspects", "models", "urls"]:
+                try: item[key] = json.loads(item[key] or "[]")
+                except: item[key] = []
+            result.append(item)
+        return result
+
+
+def add_bookmark(user_id: int, hotel: dict, db_path: str = DB_PATH) -> bool:
+    ensure_user_tables(db_path)
+    try:
+        with get_conn(db_path) as conn:
+            conn.execute("""
+                INSERT OR IGNORE INTO bookmarks (user_id, hotel_id, hotel_name, hotel_url, city, match_score)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                user_id,
+                hotel.get("id"),
+                hotel.get("name", ""),
+                hotel.get("url", ""),
+                hotel.get("city", ""),
+                hotel.get("match_score", 0),
+            ))
+            conn.commit()
+        return True
+    except Exception:
+        return False
+
+
+def remove_bookmark(user_id: int, hotel_id: int, db_path: str = DB_PATH) -> bool:
+    ensure_user_tables(db_path)
+    with get_conn(db_path) as conn:
+        conn.execute("DELETE FROM bookmarks WHERE user_id = ? AND hotel_id = ?", (user_id, hotel_id))
+        conn.commit()
+    return True
+
+
+def get_bookmarks(user_id: int, db_path: str = DB_PATH) -> list:
+    ensure_user_tables(db_path)
+    with get_conn(db_path) as conn:
+        rows = conn.execute("""
+            SELECT * FROM bookmarks WHERE user_id = ? ORDER BY created_at DESC
+        """, (user_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def is_bookmarked(user_id: int, hotel_id: int, db_path: str = DB_PATH) -> bool:
+    ensure_user_tables(db_path)
+    with get_conn(db_path) as conn:
+        row = conn.execute(
+            "SELECT id FROM bookmarks WHERE user_id = ? AND hotel_id = ?", (user_id, hotel_id)
+        ).fetchone()
+        return row is not None
 
 
 if __name__ == "__main__":

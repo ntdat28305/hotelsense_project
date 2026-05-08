@@ -108,7 +108,7 @@ function AuthModal({ auth, onClose }) {
   , document.body);
 }
 
-function AuthButton({ auth, showModal, setShowModal }) {
+function AuthButton({ auth, showModal, setShowModal, onProfile }) {
   if (auth.loading) return null;
   if (auth.user) {
     return (
@@ -117,6 +117,9 @@ function AuthButton({ auth, showModal, setShowModal }) {
           <img src={auth.user.avatar} style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid rgba(167,139,250,0.5)" }} alt="avatar" />
         )}
         <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>{auth.user.name?.split(" ").pop()}</span>
+        <button onClick={onProfile} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 99, padding: "5px 14px", color: "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer" }}>
+          Trang cá nhân
+        </button>
         <button onClick={auth.logout} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 99, padding: "5px 14px", color: "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer" }}>
           Đăng xuất
         </button>
@@ -138,7 +141,7 @@ function AuthButton({ auth, showModal, setShowModal }) {
   );
 }
 
-export default function Home({ onSearch, auth = {} }) {
+export default function Home({ onSearch, auth = {}, onProfile }) {
   const [mode,       setMode]       = useState("db");
   const [city,       setCity]       = useState("");
   const [district,   setDistrict]   = useState("");
@@ -202,7 +205,7 @@ export default function Home({ onSearch, auth = {} }) {
           <span style={S.logoText}>HotelSense</span>
 
         </div>
-        <AuthButton auth={auth} showModal={showModal} setShowModal={setShowModal} />
+        <AuthButton auth={auth} showModal={showModal} setShowModal={setShowModal} onProfile={onProfile} />
       </nav>
 
       <div style={{ ...S.hero, position: "relative", zIndex: 2 }}>
