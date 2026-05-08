@@ -38,7 +38,7 @@ security = HTTPBearer(auto_error=False)
 # ── DB helpers ───────────────────────────────────────────────────────
 
 def ensure_users_table():
-    from database import get_connection
+    from database import get_conn as get_connection
     with get_connection() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -55,7 +55,7 @@ def ensure_users_table():
 
 
 def upsert_user(google_id: str, email: str, name: str, avatar: str) -> dict:
-    from database import get_connection
+    from database import get_conn as get_connection
     ensure_users_table()
     with get_connection() as conn:
         conn.execute("""
@@ -74,7 +74,7 @@ def upsert_user(google_id: str, email: str, name: str, avatar: str) -> dict:
 
 
 def get_user_by_id(user_id: int) -> Optional[dict]:
-    from database import get_connection
+    from database import get_conn as get_connection
     ensure_users_table()
     with get_connection() as conn:
         row = conn.execute(
