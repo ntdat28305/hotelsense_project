@@ -4,6 +4,9 @@ pydantic==2.7.0
 pandas
 numpy
 scikit-learn
+joblib
+torch
+transformers
 requests
 underthesea
 beautifulsoup4
@@ -15,3 +18,5 @@ boto3
 selenium
 webdriver-manager
 undetected-chromedriver
+accelerate
+sentencepiece
