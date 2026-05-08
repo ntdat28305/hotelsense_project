@@ -276,8 +276,8 @@ export default function Home({ onSearch, auth = {}, onProfile }) {
               <span style={S.label}>Mô hình AI <span style={{ color: "#a78bfa" }}>({models.length} đã chọn)</span> — chọn nhiều để so sánh:</span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
                 {[
-                  { value: "phobert", label: "PhoBERT" }, { value: "llama", label: "LLaMA" },
-                  { value: "cnn_lstm", label: "CNN-LSTM" }, { value: "random_forest", label: "Random Forest" },
+                  { value: "phobert",  label: "PhoBERT" },
+                  { value: "cnn_lstm", label: "CNN-LSTM" },
                   { value: "logistic", label: "Logistic" },
                 ].map(m => (
                   <button key={m.value} onClick={() => toggleModel(m.value)} style={{

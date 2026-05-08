@@ -20,3 +20,5 @@ webdriver-manager
 undetected-chromedriver
 accelerate
 sentencepiece
+tensorflow
+keras
