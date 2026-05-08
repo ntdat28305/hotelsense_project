@@ -10,7 +10,7 @@ ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir PyJWT httpx boto3
+RUN pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir PyJWT httpx boto3 undetected-chromedriver
 
 COPY . .
 
