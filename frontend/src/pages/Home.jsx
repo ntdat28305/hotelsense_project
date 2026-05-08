@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { searchHotels, analyzeUrls } from "../api";
 
 const ASPECTS = [
@@ -69,7 +70,7 @@ function AspectBtn({ aspect, selected, onClick }) {
 
 
 function AuthModal({ auth, onClose }) {
-  return (
+  return createPortal(
     <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}
       onClick={onClose}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} />
@@ -104,7 +105,7 @@ function AuthModal({ auth, onClose }) {
         </p>
       </div>
     </div>
-  );
+  , document.body);
 }
 
 function AuthButton({ auth, showModal, setShowModal }) {
