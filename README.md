@@ -4,7 +4,6 @@
 
 **Live Demo**: [hotelsense283.up.railway.app](https://hotelsense283.up.railway.app)  
 
-
 ---
 
 ## 📌 Tổng quan
@@ -58,7 +57,7 @@ hotelsense_project/
 ├── notebooks/
 │   ├── 01_data_crawl.ipynb    # Thu thập dữ liệu Traveloka
 │   ├── 02_process.ipynb       # Tiền xử lý + gán nhãn + EDA
-│   └── 03_train_all_models.ipynb  # Training 4 models
+│   └── 03_train_all_models.ipynb  # Training 5 models
 └── data/
     └── hotels.db              # Download từ S3 khi deploy
 ```
