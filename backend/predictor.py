@@ -39,9 +39,27 @@ def _load_lr():
     global _lr_models, _lr_vec
     if _lr_models is None:
         log.info("Loading LR model...")
-        _lr_vec    = joblib.load(hf_hub_download(LR_REPO, "tfidf_vectorizer.joblib", token=HF_TOKEN))
-        _lr_models = [joblib.load(hf_hub_download(LR_REPO, f"lr_{c}.joblib", token=HF_TOKEN)) for c in CATEGORIES]
+        _lr_vec    = joblib.load(hf_hub_download(LR_REPO, "tfidf_vectorizer.pkl", token=HF_TOKEN))
+        _lr_models = joblib.load(hf_hub_download(LR_REPO, "logistic_regression_models.pkl", token=HF_TOKEN))
     return _lr_vec, _lr_models
+
+def _load_cnn():
+    global _cnn_model, _cnn_tok, _cnn_cfg
+    if _cnn_model is None:
+        log.info("Loading CNN-LSTM model...")
+        import pickle, json as _json
+        cfg_path = hf_hub_download(CNN_REPO, "cnn_cfg.json", token=HF_TOKEN)
+        with open(cfg_path) as f:
+            _cnn_cfg = _json.load(f)
+        tok_path = hf_hub_download(CNN_REPO, "keras_tokenizer.pkl", token=HF_TOKEN)
+        with open(tok_path, "rb") as f:
+            _cnn_tok = pickle.load(f)
+        model_path = hf_hub_download(CNN_REPO, "cnn_lstm_best.pt", token=HF_TOKEN)
+        # Load CNN-LSTM PyTorch model
+        _cnn_model = torch.load(model_path, map_location="cpu", weights_only=False)
+        _cnn_model.eval()
+    return _cnn_tok, _cnn_model, _cnn_cfg
+
 
 def _load_phobert():
     global _pb_tok, _pb_model
@@ -58,7 +76,11 @@ def _load_phobert():
 def _predict_lr(text):
     vec, models = _load_lr()
     x = vec.transform([preprocess(text)])
-    return {c: int(models[i].predict(x)[0]) for i, c in enumerate(CATEGORIES)}
+    if isinstance(models, dict):
+        return {c: int(models[c].predict(x)[0]) for c in CATEGORIES}
+    elif isinstance(models, list):
+        return {c: int(models[i].predict(x)[0]) for i, c in enumerate(CATEGORIES)}
+    return {c: 0 for c in CATEGORIES}
 
 def _predict_phobert(text):
     tok, model = _load_phobert()
@@ -73,8 +95,33 @@ def _predict_phobert(text):
     return {c: 0 for c in CATEGORIES}
 
 def _predict_cnn(text):
-    # CNN chua co inference rieng, dung LR
-    return _predict_lr(text)
+    try:
+        tok, model, cfg = _load_cnn()
+        max_len = cfg.get("max_len", 100)
+        # Tokenize
+        seq = tok.texts_to_sequences([preprocess(text)])
+        from torch.nn.functional import pad as F_pad
+        import numpy as _np
+        x = _np.zeros((1, max_len), dtype=_np.int32)
+        s = seq[0][:max_len]
+        x[0, :len(s)] = s
+        x_t = torch.tensor(x, dtype=torch.long)
+        with torch.no_grad():
+            out = model(x_t)  # shape [1, num_classes] or [1, 6*3]
+        out = out.squeeze(0)
+        n_cats = len(CATEGORIES)
+        if out.shape[0] == n_cats * 3:
+            result = {}
+            for i, c in enumerate(CATEGORIES):
+                logits = out[i*3:(i+1)*3]
+                result[c] = int(torch.argmax(logits).item())
+            return result
+        elif out.shape[0] == n_cats:
+            return {c: int(out[i].round().clamp(0,2).item()) for i, c in enumerate(CATEGORIES)}
+        return _predict_lr(text)
+    except Exception as e:
+        log.warning(f"CNN predict failed: {e}, fallback to LR")
+        return _predict_lr(text)
 
 
 # ── Public API ───────────────────────────────────────────────────────
