@@ -32,6 +32,7 @@ from database import (
     get_reviews_by_hotel, get_all_cities,
     get_districts_by_city, get_db_stats,
 )
+from auth import router as auth_router
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -41,6 +42,9 @@ app = FastAPI(
     description="Phân tích cảm xúc đa khía cạnh cho đánh giá khách sạn",
     version="2.0.0",
 )
+
+# Include auth routes
+app.include_router(auth_router)
 
 # CORS — cho phép React frontend gọi API
 app.add_middleware(
