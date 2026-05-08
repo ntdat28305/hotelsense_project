@@ -160,6 +160,8 @@ export default function Home({ onSearch, auth = {} }) {
   }
 
   async function handleSearch() {
+    // Chua dang nhap -> hien modal
+    if (!auth.user) { setShowModal(true); return; }
     if (mode === "db" && !city) { setError("Vui lòng chọn thành phố"); return; }
     setError(""); setLoading(true);
     try {
