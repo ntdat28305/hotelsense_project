@@ -2,9 +2,13 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://ntdat232-hotel-absa-api.hf.space";
 
+const HF_TOKEN = import.meta.env.VITE_HF_TOKEN || "";
+
 async function request(path, options = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (HF_TOKEN) headers["Authorization"] = `Bearer ${HF_TOKEN}`;
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     ...options,
   });
   if (!res.ok) throw new Error(`API error ${res.status}`);
