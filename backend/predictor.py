@@ -147,13 +147,11 @@ def _predict_cnn(text):
         n_out = out.shape[0]
         result = {}
         if n_out == len(CATEGORIES) * 2:
-            # 6x2: [neg, pos] per category
+            # 6x2: argmax giua neg va pos cho moi category
             for i, c in enumerate(CATEGORIES):
-                neg_score = out[i*2].item()
-                pos_score = out[i*2+1].item()
-                if pos_score > 0.5:   result[c] = 2
-                elif neg_score > 0.5: result[c] = 1
-                else:                 result[c] = 0
+                pair = out[i*2:(i+1)*2]
+                pred = int(torch.argmax(pair).item())
+                result[c] = pred * 2 if pred == 1 else 0  # 0=None, 2=Positive
         elif n_out == len(CATEGORIES) * 3:
             for i, c in enumerate(CATEGORIES):
                 result[c] = int(torch.argmax(out[i*3:(i+1)*3]).item())
