@@ -145,14 +145,20 @@ def _predict_cnn(text):
         with torch.no_grad():
             out = model(x_t).squeeze(0)  # [12] hoac [18]
         n_out = out.shape[0]
-        print(f"[CNN] out values: {out.tolist()}", flush=True)
         result = {}
         if n_out == len(CATEGORIES) * 2:
-            # 6x2: argmax giua neg va pos cho moi category
+            # [neg_logit, pos_logit] per category
+            # argmax=0 → Negative(1), argmax=1 → Positive(2)
+            # Neu ca 2 deu am thi None(0)
             for i, c in enumerate(CATEGORIES):
-                pair = out[i*2:(i+1)*2]
-                pred = int(torch.argmax(pair).item())
-                result[c] = pred * 2 if pred == 1 else 0  # 0=None, 2=Positive
+                neg = out[i*2].item()
+                pos = out[i*2+1].item()
+                if neg < 0 and pos < 0:
+                    result[c] = 0   # None
+                elif pos > neg:
+                    result[c] = 2   # Positive
+                else:
+                    result[c] = 1   # Negative
         elif n_out == len(CATEGORIES) * 3:
             for i, c in enumerate(CATEGORIES):
                 result[c] = int(torch.argmax(out[i*3:(i+1)*3]).item())
