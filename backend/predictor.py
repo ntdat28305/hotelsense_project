@@ -145,6 +145,7 @@ def _predict_cnn(text):
         with torch.no_grad():
             out = model(x_t).squeeze(0)  # [12] hoac [18]
         n_out = out.shape[0]
+        print(f"[CNN] out values: {out.tolist()}", flush=True)
         result = {}
         if n_out == len(CATEGORIES) * 2:
             # 6x2: argmax giua neg va pos cho moi category
