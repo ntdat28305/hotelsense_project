@@ -201,19 +201,7 @@ export default function Home({ onSearch, auth = {} }) {
           <span style={S.logoText}>HotelSense</span>
 
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          {stats && (
-            <div style={{ display: "flex", gap: 24 }}>
-            {Object.entries(stats.by_city || {}).map(([c, cnt]) => (
-              <div key={c} style={{ textAlign: "center" }}>
-                <div style={{ color: "#a78bfa", fontWeight: 700, fontSize: 15 }}>{cnt}</div>
-                <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>KS {c}</div>
-              </div>
-            ))}
-            </div>
-          )}
-          <AuthButton auth={auth} showModal={showModal} setShowModal={setShowModal} />
-        </div>
+        <AuthButton auth={auth} showModal={showModal} setShowModal={setShowModal} />
       </nav>
 
       <div style={{ ...S.hero, position: "relative", zIndex: 2 }}>
