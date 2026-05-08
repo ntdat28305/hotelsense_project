@@ -44,30 +44,30 @@ def _load_lr():
     return _lr_vec, _lr_models
 
 class CNN_LSTM_ABSA(torch.nn.Module):
-    def __init__(self, cfg, vocab_size, n_classes):
+    def __init__(self, cfg, vocab_size):
         super().__init__()
         embed_dim   = cfg.get("embed_dim",    128)
         num_filters = cfg.get("num_filters",  128)
         kernel_size = cfg.get("kernel_size",  3)
         hidden_dim  = cfg.get("hidden_dim",   256)
         dropout     = cfg.get("dropout",      0.3)
+        n_classes   = len(CATEGORIES) * NUM_CLASSES  # 18
 
         self.embedding = torch.nn.Embedding(vocab_size + 1, embed_dim, padding_idx=0)
         self.conv      = torch.nn.Conv1d(embed_dim, num_filters, kernel_size, padding=kernel_size//2)
-        self.bn        = torch.nn.BatchNorm1d(num_filters)
         self.relu      = torch.nn.ReLU()
         self.lstm      = torch.nn.LSTM(num_filters, hidden_dim, batch_first=True, bidirectional=True)
         self.dropout   = torch.nn.Dropout(dropout)
         self.fc        = torch.nn.Linear(hidden_dim * 2, n_classes)
 
     def forward(self, x):
-        emb  = self.embedding(x)
-        emb  = emb.permute(0, 2, 1)
-        conv = self.relu(self.bn(self.conv(emb)))
-        conv = conv.permute(0, 2, 1)
-        out, _ = self.lstm(conv)
-        out  = self.dropout(out[:, -1, :])
-        return self.fc(out)
+        emb  = self.embedding(x)                        # [B, L, E]
+        emb  = emb.permute(0, 2, 1)                     # [B, E, L]
+        conv = self.relu(self.conv(emb))                 # [B, F, L]
+        conv = conv.permute(0, 2, 1)                     # [B, L, F]
+        out, _ = self.lstm(conv)                         # [B, L, H*2]
+        out  = self.dropout(out[:, -1, :])               # [B, H*2]
+        return self.fc(out)                              # [B, 18]
 
 
 def _load_cnn():
@@ -81,15 +81,13 @@ def _load_cnn():
         tok_path = hf_hub_download(CNN_REPO, "keras_tokenizer.pkl", token=HF_TOKEN)
         with open(tok_path, "rb") as f:
             _cnn_tok = pickle.load(f)
+        vocab_size = _cnn_cfg.get("max_words", 15000)
         model_path = hf_hub_download(CNN_REPO, "cnn_lstm_best.pt", token=HF_TOKEN)
         state_dict = torch.load(model_path, map_location="cpu", weights_only=True)
-        # Lay vocab_size va n_classes tu state_dict
-        vocab_size = state_dict["embedding.weight"].shape[0] - 1
-        n_classes  = state_dict["fc.bias"].shape[0]
-        _cnn_model = CNN_LSTM_ABSA(_cnn_cfg, vocab_size, n_classes)
+        _cnn_model = CNN_LSTM_ABSA(_cnn_cfg, vocab_size)
         _cnn_model.load_state_dict(state_dict)
         _cnn_model.eval()
-        print(f"[CNN] Model loaded! vocab={vocab_size} classes={n_classes}", flush=True)
+        print("[CNN] Model loaded!", flush=True)
     return _cnn_tok, _cnn_model, _cnn_cfg
 
 
@@ -135,36 +133,28 @@ def _predict_phobert(text):
 def _predict_cnn(text):
     try:
         tok, model, cfg = _load_cnn()
-        max_len = cfg.get("max_len", 128)
-        import numpy as _np
+        max_len = cfg.get("max_len", 100)
+        # Tokenize
         seq = tok.texts_to_sequences([preprocess(text)])
-        x   = _np.zeros((1, max_len), dtype=_np.int32)
-        s   = seq[0][:max_len]
+        from torch.nn.functional import pad as F_pad
+        import numpy as _np
+        x = _np.zeros((1, max_len), dtype=_np.int32)
+        s = seq[0][:max_len]
         x[0, :len(s)] = s
         x_t = torch.tensor(x, dtype=torch.long)
         with torch.no_grad():
-            out = model(x_t).squeeze(0)  # [12] hoac [18]
-        n_out = out.shape[0]
-        result = {}
-        if n_out == len(CATEGORIES) * 2:
-            # [neg_logit, pos_logit] per category
-            # argmax=0 → Negative(1), argmax=1 → Positive(2)
-            # Neu ca 2 deu am thi None(0)
+            out = model(x_t)  # shape [1, num_classes] or [1, 6*3]
+        out = out.squeeze(0)
+        n_cats = len(CATEGORIES)
+        if out.shape[0] == n_cats * 3:
+            result = {}
             for i, c in enumerate(CATEGORIES):
-                neg = out[i*2].item()
-                pos = out[i*2+1].item()
-                if neg < 0 and pos < 0:
-                    result[c] = 0   # None
-                elif pos > neg:
-                    result[c] = 2   # Positive
-                else:
-                    result[c] = 1   # Negative
-        elif n_out == len(CATEGORIES) * 3:
-            for i, c in enumerate(CATEGORIES):
-                result[c] = int(torch.argmax(out[i*3:(i+1)*3]).item())
-        else:
-            return _predict_lr(text)
-        return result
+                logits = out[i*3:(i+1)*3]
+                result[c] = int(torch.argmax(logits).item())
+            return result
+        elif out.shape[0] == n_cats:
+            return {c: int(out[i].round().clamp(0,2).item()) for i, c in enumerate(CATEGORIES)}
+        return _predict_lr(text)
     except Exception as e:
         log.warning(f"CNN predict failed: {e}, fallback to LR")
         return _predict_lr(text)
