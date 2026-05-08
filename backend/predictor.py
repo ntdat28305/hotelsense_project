@@ -43,10 +43,37 @@ def _load_lr():
         _lr_models = joblib.load(hf_hub_download(LR_REPO, "logistic_regression_models.pkl", token=HF_TOKEN))
     return _lr_vec, _lr_models
 
+class CNN_LSTM_ABSA(torch.nn.Module):
+    def __init__(self, cfg, vocab_size):
+        super().__init__()
+        embed_dim   = cfg.get("embed_dim",    128)
+        num_filters = cfg.get("num_filters",  128)
+        kernel_size = cfg.get("kernel_size",  3)
+        hidden_dim  = cfg.get("hidden_dim",   256)
+        dropout     = cfg.get("dropout",      0.3)
+        n_classes   = len(CATEGORIES) * NUM_CLASSES  # 18
+
+        self.embedding = torch.nn.Embedding(vocab_size + 1, embed_dim, padding_idx=0)
+        self.conv      = torch.nn.Conv1d(embed_dim, num_filters, kernel_size, padding=kernel_size//2)
+        self.relu      = torch.nn.ReLU()
+        self.lstm      = torch.nn.LSTM(num_filters, hidden_dim, batch_first=True, bidirectional=True)
+        self.dropout   = torch.nn.Dropout(dropout)
+        self.fc        = torch.nn.Linear(hidden_dim * 2, n_classes)
+
+    def forward(self, x):
+        emb  = self.embedding(x)                        # [B, L, E]
+        emb  = emb.permute(0, 2, 1)                     # [B, E, L]
+        conv = self.relu(self.conv(emb))                 # [B, F, L]
+        conv = conv.permute(0, 2, 1)                     # [B, L, F]
+        out, _ = self.lstm(conv)                         # [B, L, H*2]
+        out  = self.dropout(out[:, -1, :])               # [B, H*2]
+        return self.fc(out)                              # [B, 18]
+
+
 def _load_cnn():
     global _cnn_model, _cnn_tok, _cnn_cfg
     if _cnn_model is None:
-        log.info("Loading CNN-LSTM model...")
+        print("[CNN] Loading CNN-LSTM model...", flush=True)
         import pickle, json as _json
         cfg_path = hf_hub_download(CNN_REPO, "cnn_cfg.json", token=HF_TOKEN)
         with open(cfg_path) as f:
@@ -54,10 +81,13 @@ def _load_cnn():
         tok_path = hf_hub_download(CNN_REPO, "keras_tokenizer.pkl", token=HF_TOKEN)
         with open(tok_path, "rb") as f:
             _cnn_tok = pickle.load(f)
+        vocab_size = _cnn_cfg.get("max_words", 15000)
         model_path = hf_hub_download(CNN_REPO, "cnn_lstm_best.pt", token=HF_TOKEN)
-        # Load CNN-LSTM PyTorch model
-        _cnn_model = torch.load(model_path, map_location="cpu", weights_only=False)
+        state_dict = torch.load(model_path, map_location="cpu", weights_only=True)
+        _cnn_model = CNN_LSTM_ABSA(_cnn_cfg, vocab_size)
+        _cnn_model.load_state_dict(state_dict)
         _cnn_model.eval()
+        print("[CNN] Model loaded!", flush=True)
     return _cnn_tok, _cnn_model, _cnn_cfg
 
 
