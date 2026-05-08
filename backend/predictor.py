@@ -89,22 +89,13 @@ def _predict_phobert(text):
         tok, model = _load_phobert()
         inputs = tok(preprocess(text), return_tensors="pt", truncation=True, max_length=256, padding=True)
         with torch.no_grad():
-            logits = model(**inputs).logits
-        print(f"[PhoBERT] logits shape: {logits.shape}", flush=True)
-        preds = torch.argmax(logits, dim=-1).squeeze().tolist()
-        print(f"[PhoBERT] preds: {preds}", flush=True)
-        if isinstance(preds, int): preds = [preds]
-        if len(preds) == len(CATEGORIES):
-            return {c: preds[i] for i, c in enumerate(CATEGORIES)}
-        # Flat output: 6*3=18
-        if len(preds) == len(CATEGORIES) * NUM_CLASSES:
-            result = {}
-            for i, c in enumerate(CATEGORIES):
-                cls_logits = logits[0][i*NUM_CLASSES:(i+1)*NUM_CLASSES]
-                result[c] = int(torch.argmax(cls_logits).item())
-            return result
-        print(f"[PhoBERT] unexpected preds len: {len(preds)}", flush=True)
-        return {c: 0 for c in CATEGORIES}
+            logits = model(**inputs).logits  # shape [1, 18]
+        # 18 = 6 categories x 3 classes
+        result = {}
+        for i, c in enumerate(CATEGORIES):
+            cls_logits = logits[0][i*NUM_CLASSES:(i+1)*NUM_CLASSES]
+            result[c] = int(torch.argmax(cls_logits).item())
+        return result
     except Exception as e:
         print(f"[PhoBERT] ERROR: {e}", flush=True)
         return {c: 0 for c in CATEGORIES}
