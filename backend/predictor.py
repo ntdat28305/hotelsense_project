@@ -64,10 +64,12 @@ def _load_cnn():
 def _load_phobert():
     global _pb_tok, _pb_model
     if _pb_model is None:
-        log.info("Loading PhoBERT model...")
+        print(f"[PhoBERT] Loading from {PHOBERT_REPO}...", flush=True)
         _pb_tok   = AutoTokenizer.from_pretrained(PHOBERT_REPO, token=HF_TOKEN)
+        print("[PhoBERT] Tokenizer loaded", flush=True)
         _pb_model = AutoModelForSequenceClassification.from_pretrained(PHOBERT_REPO, token=HF_TOKEN)
         _pb_model.eval()
+        print("[PhoBERT] Model loaded!", flush=True)
     return _pb_tok, _pb_model
 
 
@@ -135,6 +137,7 @@ def predict_batch(texts, model_type="phobert"):
         "phobert":       _predict_phobert,
         "cnn_lstm":      _predict_cnn,
     }.get(model_type, _predict_phobert)
+    print(f"[predict_batch] model={model_type}, texts={len(texts)}", flush=True)
 
     results = []
     for text in texts:
