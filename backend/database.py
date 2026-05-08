@@ -135,6 +135,7 @@ def get_conn(db_path: str = DB_PATH):
 
 def init_db(db_path: str = DB_PATH):
     """Khởi tạo database và tạo tables."""
+    download_db_from_bucket()
     with get_conn(db_path) as conn:
         conn.executescript(SCHEMA)
     print(f"[DB] Khởi tạo xong: {db_path}")
