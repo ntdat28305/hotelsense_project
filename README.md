@@ -3,7 +3,7 @@
 > Phân tích hàng nghìn đánh giá thực bằng AI — không chỉ điểm sao
 
 **Live Demo**: [hotelsense283.up.railway.app](https://hotelsense283.up.railway.app)  
-**Backend API Docs**: [bountiful-spirit-production.up.railway.app/docs](https://bountiful-spirit-production.up.railway.app/docs)
+
 
 ---
 
@@ -368,12 +368,3 @@ s3.upload_file('data/hotels.db', 'resilient-drum-ws2x5wnd3f', 'hotels.db')
 5. **HF Token** của `quangdao232` nếu expire → models không load → predict trả 0
 
 ---
-
-## 👨‍💻 Tác giả
-
-**Nguyễn Thành Đạt** — Sinh viên năm 3, Khoa CNTT  
-Trường Đại học Khoa học Tự nhiên, ĐHQG-HCM
-
----
-
-*README này được thiết kế để Claude AI đọc 1 lần và nắm toàn bộ codebase, tiết kiệm token cho các session tiếp theo.*
