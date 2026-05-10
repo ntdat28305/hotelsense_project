@@ -2,8 +2,8 @@
 
 > Phân tích hàng nghìn đánh giá thực bằng AI — không chỉ điểm sao
 
-**Live Demo**: [hotelsense283.up.railway.app](https://hotelsense283.up.railway.app)  
-
+**Web**: [hotelsense283.up.railway.app](https://hotelsense283.up.railway.app)  
+**Video Demo**: [Video Demo](https://drive.google.com/drive/folders/1pKOAOGQ6m-0dlaWbLqT_T8jdvdymL7er?usp=sharing)  
 ---
 
 ## 📌 Tổng quan
